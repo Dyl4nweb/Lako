@@ -18,7 +18,7 @@ interface CartContextType {
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
-const CART_STORAGE_KEY = "movli_cart_items_v1";
+const CART_STORAGE_KEY = "lako_cart_items_v1";
 const DEFAULT_DELIVERY_FEE = 45.0;
 
 export function CartProvider({ children }: { children: React.ReactNode }) {
@@ -27,7 +27,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     try {
-      const stored = localStorage.getItem(CART_STORAGE_KEY);
+      const stored = localStorage.getItem(CART_STORAGE_KEY) || localStorage.getItem("movli_cart_items_v1");
       if (stored) {
         const parsed = JSON.parse(stored);
         if (Array.isArray(parsed)) {

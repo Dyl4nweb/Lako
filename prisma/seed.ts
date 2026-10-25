@@ -2,7 +2,7 @@ import prisma from "../src/lib/prisma";
 import { auth } from "../src/lib/auth";
 
 async function main() {
-  console.log("🌱 Starting Movli database seed...");
+  console.log("🌱 Starting Lako database seed...");
 
   // 1. Create or ensure Categories
   const categoriesData = [
@@ -80,7 +80,7 @@ async function main() {
       description: "Authentic, time-honored Lingayen fermented anchovy fish sauce in glass bottle. Perfectly aged for rich savory umami flavour.",
       price: 135.00,
       stock: 60,
-      imageUrl: "https://images.unsplash.com/photo-1628525805785-cc179798b09a?auto=format&fit=crop&w=800&q=80",
+      imageUrl: "https://images.unsplash.com/photo-1615485290382-441e4d049cb5?auto=format&fit=crop&w=800&q=80",
       categorySlug: "fresh-market-seafood",
       published: true,
     },
@@ -227,9 +227,28 @@ async function main() {
   }
 
   // 3. Seed Default Accounts (Admin, Rider, Customer)
-  console.log("Setting up standard seed accounts...");
-
   const usersToSeed = [
+    {
+      name: "Lako Administrator",
+      email: "admin@lako.com",
+      password: "Password123!",
+      role: "ADMIN" as const,
+      phone: "+639171234567",
+    },
+    {
+      name: "Juan Dela Cruz (Lako Rider)",
+      email: "rider@lako.com",
+      password: "Password123!",
+      role: "RIDER" as const,
+      phone: "+639189876543",
+    },
+    {
+      name: "Maria Santos (Customer)",
+      email: "customer@lako.com",
+      password: "Password123!",
+      role: "CUSTOMER" as const,
+      phone: "+639201122334",
+    },
     {
       name: "Movli Administrator",
       email: "admin@movli.com",
@@ -293,7 +312,7 @@ async function main() {
     }
   }
 
-  console.log("✅ Movli database seed completed successfully!");
+  console.log("✅ Lako database seed completed successfully!");
 }
 
 main()

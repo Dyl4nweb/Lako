@@ -56,7 +56,7 @@ export function Footer() {
         <div className="space-y-3 md:col-span-1">
           <MovliLogo showTagline size="md" />
           <p className="text-xs text-neutral-500 leading-relaxed pt-2">
-            Movli is your provincial marketplace connecting everyday shoppers with fresh market
+            Lako is your provincial marketplace connecting everyday shoppers with fresh market
             seafood, native delicacies, and pantry staples delivered with trusted local riders.
           </p>
         </div>
@@ -138,7 +138,7 @@ export function Footer() {
       </div>
 
       <div className="border-t border-neutral-100 py-6 px-4 text-center text-xs text-neutral-500">
-        <p>© {new Date().getFullYear()} Movli. All rights reserved. Everything moves with Movli.</p>
+        <p>© {new Date().getFullYear()} Lako. All rights reserved. Lokal na paninda, hatid sa pinto.</p>
       </div>
     </footer>
   );

@@ -83,7 +83,7 @@ export function ProductDetailClient({ product }: ProductDetailClientProps) {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-start">
           {/* Image Area */}
           <div className="lg:col-span-6">
-            <div className="relative aspect-square w-full rounded-2xl overflow-hidden bg-neutral-100 border border-neutral-200/80 shadow-inner">
+            <div style={{ position: "relative" }} className="relative aspect-square w-full rounded-2xl overflow-hidden bg-neutral-100 border border-neutral-200/80 shadow-inner">
               <Image
                 src={product.imageUrl}
                 alt={product.name}

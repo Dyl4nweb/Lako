@@ -65,7 +65,7 @@ export default async function ProfilePage() {
                     {userRole} Account
                   </span>
                   <span className="text-xs text-neutral-500">
-                    Active Movli Member
+                    Active Lako Member
                   </span>
                 </div>
               </div>

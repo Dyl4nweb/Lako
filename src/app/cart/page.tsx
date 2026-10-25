@@ -16,6 +16,7 @@ import {
   Truck,
   RotateCcw,
 } from "lucide-react";
+import { LakoMascot } from "@/components/brand/LakoMascot";
 
 export default function CartPage() {
   const { items, removeItem, updateQuantity, clearCart, subtotal, deliveryFee, total, isLoaded } =
@@ -75,7 +76,7 @@ export default function CartPage() {
                     className="p-4 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"
                   >
                     <div className="flex items-center gap-4 flex-1">
-                      <div className="relative w-20 h-20 sm:w-24 sm:h-24 rounded-2xl overflow-hidden bg-neutral-100 shrink-0 border border-neutral-200/80">
+                      <div style={{ position: "relative" }} className="relative w-20 h-20 sm:w-24 sm:h-24 rounded-2xl overflow-hidden bg-neutral-100 shrink-0 border border-neutral-200/80">
                         <Image
                           src={item.imageUrl}
                           alt={item.name}
@@ -212,10 +213,8 @@ export default function CartPage() {
             </div>
           </div>
         ) : (
-          <div className="text-center py-20 bg-white rounded-3xl border border-neutral-200/80 p-8 my-8 max-w-lg mx-auto">
-            <div className="w-16 h-16 rounded-full bg-orange-50 text-orange-600 flex items-center justify-center mx-auto mb-4">
-              <ShoppingBag className="w-8 h-8" />
-            </div>
+          <div className="text-center py-16 bg-white rounded-3xl border border-neutral-200/80 p-8 my-8 max-w-lg mx-auto">
+            <LakoMascot variant="delivery" size="lg" animate className="mx-auto mb-4" />
             <h3 className="text-base font-bold text-neutral-900">Your shopping cart is empty</h3>
             <p className="text-xs text-neutral-500 max-w-sm mx-auto mt-1 mb-6">
               Looks like you haven&apos;t added any local produce or goods to your cart yet.

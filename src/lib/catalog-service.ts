@@ -71,7 +71,7 @@ export const SAMPLE_PRODUCTS = [
     description: "Authentic, time-honored Lingayen fermented anchovy fish sauce in glass bottle. Perfectly aged for rich savory umami flavour.",
     price: 135.0,
     stock: 60,
-    imageUrl: "https://images.unsplash.com/photo-1628525805785-cc179798b09a?auto=format&fit=crop&w=800&q=80",
+    imageUrl: "https://images.unsplash.com/photo-1615485290382-441e4d049cb5?auto=format&fit=crop&w=800&q=80",
     categoryId: "cat-1",
     category: { name: "Fresh Market & Seafood", slug: "fresh-market-seafood" },
     published: true,

@@ -23,6 +23,7 @@ import {
   Loader2,
   CheckCircle,
 } from "lucide-react";
+import { LakoMascot } from "@/components/brand/LakoMascot";
 
 type CheckoutFormData = z.infer<typeof checkoutSchema>;
 
@@ -293,7 +294,7 @@ export default function CheckoutPage() {
                 <div className="max-h-64 overflow-y-auto space-y-3 pr-1 scrollbar-thin">
                   {items.map((item) => (
                     <div key={item.productId} className="flex items-center gap-3 text-xs">
-                      <div className="relative w-12 h-12 rounded-xl overflow-hidden bg-neutral-100 shrink-0 border border-neutral-200/80">
+                      <div style={{ position: "relative" }} className="relative w-12 h-12 rounded-xl overflow-hidden bg-neutral-100 shrink-0 border border-neutral-200/80">
                         <Image
                           src={item.imageUrl}
                           alt={item.name}
@@ -352,6 +353,16 @@ export default function CheckoutPage() {
                     </>
                   )}
                 </button>
+
+                <div className="flex items-center gap-3 p-3.5 rounded-2xl bg-amber-50/80 border border-orange-200/60">
+                  <div className="shrink-0">
+                    <LakoMascot variant="delivery" size="xs" animate={false} />
+                  </div>
+                  <div className="text-[11px] leading-snug">
+                    <span className="font-bold text-neutral-900 block">LAKO Guaranteed Fast Dispatch</span>
+                    <span className="text-neutral-600">Our local carabao dispatch team picks up directly from your chosen neighborhood sellers.</span>
+                  </div>
+                </div>
 
                 <p className="text-[11px] text-center text-neutral-500 leading-tight">
                   By clicking Place Order, your inventory is reserved and our local dispatch team will

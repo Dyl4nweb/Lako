@@ -362,3 +362,78 @@ export async function toggleUserStatusAction(userId: string) {
     return { success: false, error: (error as Error)?.message || "Failed to update account status." };
   }
 }
+
+export async function deleteCustomerAction(customerId: string) {
+  try {
+    const { user: currentAdmin } = await requireAdmin();
+
+    if (customerId === currentAdmin.id) {
+      return { success: false, error: "You cannot delete your own admin account." };
+    }
+
+    const targetUser = await prisma.user.findUnique({
+      where: { id: customerId },
+      select: { id: true, name: true, email: true, role: true },
+    });
+
+    if (!targetUser) {
+      return { success: false, error: "Customer not found." };
+    }
+
+    if (targetUser.role === "ADMIN") {
+      return { success: false, error: "Cannot delete an administrator account." };
+    }
+
+    // Safely delete customer and associated records inside a transaction
+    await prisma.$transaction(async (tx) => {
+      // 1. Fetch customer orders
+      const orders = await tx.order.findMany({
+        where: { customerId },
+        select: { id: true },
+      });
+      const orderIds = orders.map((o) => o.id);
+
+      if (orderIds.length > 0) {
+        // Delete order items
+        await tx.orderItem.deleteMany({
+          where: { orderId: { in: orderIds } },
+        });
+        // Delete status history
+        await tx.orderStatusHistory.deleteMany({
+          where: { orderId: { in: orderIds } },
+        });
+        // Delete orders
+        await tx.order.deleteMany({
+          where: { id: { in: orderIds } },
+        });
+      }
+
+      // 2. Delete inventory logs created by user if any
+      await tx.inventoryLog.deleteMany({
+        where: { createdById: customerId },
+      });
+
+      // 3. Delete any order status history made by user
+      await tx.orderStatusHistory.deleteMany({
+        where: { changedById: customerId },
+      });
+
+      // 4. Delete user sessions & accounts
+      await tx.session.deleteMany({ where: { userId: customerId } });
+      await tx.account.deleteMany({ where: { userId: customerId } });
+
+      // 5. Delete the user
+      await tx.user.delete({ where: { id: customerId } });
+    });
+
+    revalidatePath("/admin/customers");
+    revalidatePath("/admin/orders");
+    revalidatePath("/admin");
+
+    return { success: true, message: `Customer ${targetUser.name} deleted successfully.` };
+  } catch (error: unknown) {
+    console.error("Delete customer error:", error);
+    return { success: false, error: (error as Error)?.message || "Failed to delete customer." };
+  }
+}
+

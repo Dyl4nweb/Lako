@@ -270,7 +270,7 @@ export function ProductManagementView({
                 <tr key={p.id} className="hover:bg-neutral-50/80 transition-colors">
                   <td className="py-3.5 px-4">
                     <div className="flex items-center gap-3">
-                      <div className="relative w-12 h-12 rounded-xl overflow-hidden bg-neutral-100 shrink-0 border border-neutral-200">
+                      <div style={{ position: "relative" }} className="relative w-12 h-12 rounded-xl overflow-hidden bg-neutral-100 shrink-0 border border-neutral-200">
                         <Image
                           src={p.imageUrl}
                           alt={p.name}

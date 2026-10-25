@@ -248,7 +248,7 @@ export function RiderManagementView({
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="rider.juan@movli.com"
+                  placeholder="rider.juan@lako.com"
                   className="w-full bg-neutral-50 rounded-xl px-3.5 py-2.5 border border-neutral-200 focus:bg-white focus:border-orange-500 focus:outline-none"
                 />
               </div>

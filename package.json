@@ -1,5 +1,5 @@
 {
-  "name": "movli",
+  "name": "lako",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -7,7 +7,10 @@
     "build": "next build --webpack",
     "start": "next start",
     "lint": "eslint",
-    "postinstall": "prisma generate"
+    "postinstall": "prisma generate",
+    "prisma:push": "prisma db push",
+    "prisma:seed": "prisma db seed",
+    "prisma:studio": "prisma studio"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
@@ -22,10 +25,12 @@
     "react": "19.3.0",
     "react-dom": "19.3.0",
     "react-hook-form": "^7.91.0",
+    "resend": "^6.34.1",
     "tailwind-merge": "^3.7.0",
     "zod": "^4.6.7"
   },
   "devDependencies": {
+    "@tailwindcss/postcss": "^4.3.3",
     "@tailwindcss/turbopack": "^4",
     "@types/node": "^20",
     "@types/react": "^19",

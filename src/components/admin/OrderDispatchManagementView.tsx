@@ -439,7 +439,7 @@ export function OrderDispatchManagementView({
                 {selectedOrder.items.map((it) => (
                   <div key={it.id} className="py-2.5 flex items-center justify-between gap-3">
                     <div className="flex items-center gap-2.5">
-                      <div className="relative w-10 h-10 rounded-lg overflow-hidden bg-neutral-100 shrink-0">
+                      <div style={{ position: "relative" }} className="relative w-10 h-10 rounded-lg overflow-hidden bg-neutral-100 shrink-0">
                         <Image
                           src={it.productImage}
                           alt={it.productName}

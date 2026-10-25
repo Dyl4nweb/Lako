@@ -132,7 +132,7 @@ export default async function OrdersPage() {
                 <div className="pt-4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
                   {order.items.slice(0, 3).map((item) => (
                     <div key={item.id} className="flex items-center gap-3">
-                      <div className="relative w-12 h-12 rounded-xl overflow-hidden bg-neutral-100 shrink-0 border border-neutral-200/80">
+                      <div style={{ position: "relative" }} className="relative w-12 h-12 rounded-xl overflow-hidden bg-neutral-100 shrink-0 border border-neutral-200/80">
                         <Image
                           src={item.productImage}
                           alt={item.productName}

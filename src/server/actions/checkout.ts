@@ -4,6 +4,7 @@ import prisma from "@/lib/prisma";
 import { getServerSession } from "@/lib/server-auth";
 import { checkoutSchema } from "@/lib/validations";
 import { revalidatePath } from "next/cache";
+import { sendOrderReceiptEmail } from "@/lib/email";
 
 interface CheckoutItemInput {
   productId: string;
@@ -120,10 +121,10 @@ export async function processCheckout(
 
       const total = subtotal + deliveryFee;
 
-      // Generate human-friendly order number: MOV-YYYYMMDD-XXXX
+      // Generate human-friendly order number: LAKO-YYYYMMDD-XXXX
       const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, "");
       const randomSuffix = Math.floor(1000 + Math.random() * 9000);
-      const orderNumber = `MOV-${dateStr}-${randomSuffix}`;
+      const orderNumber = `LAKO-${dateStr}-${randomSuffix}`;
 
       // Create Order
       const newOrder = await tx.order.create({
@@ -165,6 +166,27 @@ export async function processCheckout(
 
       return newOrder;
     });
+
+    // Send confirmation receipt email asynchronously via Resend
+    if (sessionData.user.email) {
+      sendOrderReceiptEmail({
+        toEmail: sessionData.user.email,
+        customerName: result.customerName,
+        orderNumber: result.orderNumber,
+        orderId: result.id,
+        deliveryAddress: result.deliveryAddress,
+        customerPhone: result.customerPhone,
+        items: result.items.map((i) => ({
+          productName: i.productName,
+          quantity: i.quantity,
+          unitPrice: Number(i.unitPrice),
+          lineTotal: Number(i.lineTotal),
+        })),
+        subtotal: Number(result.subtotal),
+        deliveryFee: Number(result.deliveryFee),
+        total: Number(result.total),
+      }).catch((e) => console.error("[Resend] Failed to send receipt email:", e));
+    }
 
     revalidatePath("/orders");
     revalidatePath("/admin/orders");

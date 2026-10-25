@@ -57,7 +57,7 @@ export function ProductCard({
   return (
     <div className="group relative flex flex-col bg-white rounded-2xl border border-neutral-200/80 shadow-xs hover:shadow-lg hover:border-orange-200 transition-all duration-200 overflow-hidden">
       {/* Product Image Area */}
-      <Link href={`/products/${id}`} className="relative aspect-square w-full overflow-hidden bg-neutral-100">
+      <Link href={`/products/${id}`} style={{ position: "relative" }} className="relative block aspect-square w-full overflow-hidden bg-neutral-100">
         <Image
           src={imageUrl}
           alt={name}

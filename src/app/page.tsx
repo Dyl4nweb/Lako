@@ -34,8 +34,8 @@ export default async function HomePage() {
 
                 <h1 className="text-3xl sm:text-5xl lg:text-6xl font-black tracking-tight leading-tight">
                   Everything moves <br className="hidden sm:inline" />
-                  <span className="text-amber-200 underline decoration-amber-300 decoration-wavy decoration-2">
-                    with Movli.
+                  <span className="text-amber-200">
+                    with LAKO.
                   </span>
                 </h1>
 
@@ -76,10 +76,10 @@ export default async function HomePage() {
 
               {/* Hero Visual Card */}
               <div className="lg:col-span-5 flex justify-center">
-                <div className="relative w-full max-w-md aspect-4/3 sm:aspect-square rounded-3xl overflow-hidden shadow-2xl border-4 border-white/30 bg-neutral-900">
+                <div style={{ position: "relative" }} className="relative w-full max-w-md aspect-4/3 sm:aspect-square rounded-3xl overflow-hidden shadow-2xl border-4 border-white/30 bg-neutral-900">
                   <Image
                     src="https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=800&q=80"
-                    alt="Movli Local Market Goods"
+                    alt="Lako Local Market Goods"
                     fill
                     priority
                     sizes="(max-width: 768px) 100vw, 40vw"
@@ -126,7 +126,7 @@ export default async function HomePage() {
                   href={`/products?category=${cat.slug}`}
                   className="group flex flex-col items-center bg-white rounded-2xl p-4 border border-neutral-200/80 hover:border-orange-500 hover:shadow-md transition-all text-center"
                 >
-                  <div className="relative w-14 h-14 rounded-2xl overflow-hidden mb-3 bg-orange-50 group-hover:scale-105 transition-transform">
+                  <div style={{ position: "relative" }} className="relative w-14 h-14 rounded-2xl overflow-hidden mb-3 bg-orange-50 group-hover:scale-105 transition-transform">
                     {cat.imageUrl ? (
                       <Image
                         src={cat.imageUrl}

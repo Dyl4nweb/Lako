@@ -1,26 +1,81 @@
 @import "tailwindcss";
+/* Lako Design System */
 
 :root {
   --background: #ffffff;
-  --foreground: #171717;
+  --foreground: #242424;
+
+  /* LAKO Brand Design Tokens */
+  --brand-orange: #FF7A1A;
+  --brand-charcoal: #242424;
+  --brand-cream: #FFF6EA;
+  --brand-white: #FFFFFF;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-brand-orange: var(--brand-orange);
+  --color-brand-charcoal: var(--brand-charcoal);
+  --color-brand-cream: var(--brand-cream);
+  --color-brand-white: var(--brand-white);
+  --color-lako-orange: #FF7A1A;
+  --color-lako-charcoal: #242424;
+  --color-lako-cream: #FFF6EA;
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+}
+
+/* LAKO Custom Micro-Animations */
+@keyframes lakoFloat {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+@keyframes lakoPulseGlow {
+  0%, 100% {
+    opacity: 0.9;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.02);
+  }
+}
+
+@keyframes lakoProgressBar {
+  0% {
+    width: 0%;
+  }
+  40% {
+    width: 55%;
+  }
+  85% {
+    width: 88%;
+  }
+  100% {
+    width: 100%;
+  }
+}
+
+.animate-lako-float {
+  animation: lakoFloat 3.5s ease-in-out infinite;
+}
+
+.animate-lako-pulse {
+  animation: lakoPulseGlow 2s ease-in-out infinite;
+}
+
+.animate-lako-progress {
+  animation: lakoProgressBar 1.4s cubic-bezier(0.4, 0, 0.2, 1) forwards;
 }

@@ -11,6 +11,13 @@ export const auth = betterAuth({
     requireEmailVerification: false,
     minPasswordLength: 6,
   },
+  socialProviders: {
+    google: {
+      clientId: process.env.GOOGLE_CLIENT_ID || "",
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET || "",
+      enabled: Boolean(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET),
+    },
+  },
   user: {
     additionalFields: {
       phone: {
@@ -33,7 +40,7 @@ export const auth = betterAuth({
     },
   },
   baseURL: process.env.BETTER_AUTH_URL || process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000",
-  secret: process.env.BETTER_AUTH_SECRET || "movli_super_secret_local_dev_key_32_characters_minimum",
+  secret: process.env.BETTER_AUTH_SECRET || "lako_super_secret_local_dev_key_32_characters_minimum",
 });
 
 export type Session = typeof auth.$Infer.Session;

@@ -20,6 +20,7 @@ import {
   Bike,
 } from "lucide-react";
 import { OrderStatus } from "@/types";
+import { LakoMascot } from "@/components/brand/LakoMascot";
 
 export const dynamic = "force-dynamic";
 
@@ -122,13 +123,13 @@ export default async function OrderDetailPage({
 
         {/* Order Placed Success Banner */}
         {success && (
-          <div className="mb-6 p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-900 flex items-start gap-3">
-            <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
-            <div>
-              <p className="text-xs font-bold">Order Confirmed Successfully!</p>
-              <p className="text-xs text-emerald-700 mt-0.5">
+          <div className="mb-6 p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-emerald-50 via-teal-50 to-orange-50 border border-emerald-200 text-emerald-900 flex items-center gap-4">
+            <LakoMascot variant="delivery" size="sm" animate className="shrink-0" />
+            <div className="flex-1 min-w-0">
+              <p className="text-xs sm:text-sm font-bold text-emerald-900">Order Confirmed Successfully!</p>
+              <p className="text-xs text-neutral-600 mt-0.5">
                 Thank you for your order! Your items and stock have been reserved. Our local store
-                and riders have been notified.
+                and riders have been notified and are packing your items.
               </p>
             </div>
           </div>
@@ -160,7 +161,7 @@ export default async function OrderDetailPage({
                 {order.items.map((item) => (
                   <div key={item.id} className="py-3.5 flex items-center justify-between gap-4">
                     <div className="flex items-center gap-3 min-w-0">
-                      <div className="relative w-14 h-14 rounded-xl overflow-hidden bg-neutral-100 shrink-0 border border-neutral-200">
+                      <div style={{ position: "relative" }} className="relative w-14 h-14 rounded-xl overflow-hidden bg-neutral-100 shrink-0 border border-neutral-200">
                         <Image
                           src={item.productImage}
                           alt={item.productName}
@@ -242,7 +243,7 @@ export default async function OrderDetailPage({
                     <h4 className="text-sm font-bold text-neutral-900">
                       {order.assignedRider.name}
                     </h4>
-                    <p className="text-xs text-neutral-500">Official Movli Delivery Fleet</p>
+                    <p className="text-xs text-neutral-500">Official Lako Delivery Fleet</p>
                   </div>
                 </div>
 
