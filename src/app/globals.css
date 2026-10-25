@@ -1,0 +1,52 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --color-primary: #E25822;
+  --color-slate-deep: #1A202C;
+  --color-sand: #FBFBF9;
+}
+
+body {
+  background-color: #FBFBF9;
+  color: #1A202C;
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Custom scrollbar for horizontal category pill strips */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Glassmorphic accents */
+.glass-panel {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(229, 231, 235, 0.8);
+}
+
+.glass-panel-dark {
+  background: rgba(26, 32, 44, 0.88);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Pulsing beacon for live orders */
+@keyframes beacon-pulse {
+  0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(226, 88, 34, 0.7); }
+  70% { transform: scale(1); box-shadow: 0 0 0 10px rgba(226, 88, 34, 0); }
+  100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(226, 88, 34, 0); }
+}
+
+.beacon-active {
+  animation: beacon-pulse 2s infinite;
+}

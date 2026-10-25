@@ -1,0 +1,255 @@
+// Production Schema for Neon Serverless PostgreSQL
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum Role {
+  SUPER_ADMIN
+  ADMIN
+  SELLER
+  RIDER
+  CUSTOMER
+}
+
+enum OrderStatus {
+  PENDING
+  ACCEPTED
+  PREPARING
+  READY_FOR_PICKUP
+  ASSIGNED
+  PICKED_UP
+  IN_TRANSIT
+  DELIVERED
+  FAILED_DELIVERY
+  RETURNED_TO_SELLER
+  CANCELLED_BY_CUSTOMER
+  REJECTED_BY_STORE
+}
+
+model User {
+  id            String         @id @default(uuid())
+  email         String         @unique
+  emailVerified DateTime?
+  passwordHash  String?
+  fullName      String
+  avatarUrl     String?
+  phoneNumber   String?        @unique
+  role          Role           @default(CUSTOMER)
+  isActive      Boolean        @default(true)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  accounts      Account[]
+  addresses     Address[]
+  store         Store?
+  riderProfile  RiderProfile?
+  customerOrders Order[]       @relation("CustomerOrders")
+  auditLogs     AuditLog[]
+  statusChanges OrderStatusHistory[]
+
+  @@index([role, isActive])
+}
+
+model Account {
+  id                String  @id @default(uuid())
+  userId            String
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+}
+
+model Address {
+  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  barangay    String
+  street      String
+  landmark    String
+  isDefault   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+}
+
+model Store {
+  id              String      @id @default(uuid())
+  ownerId         String      @unique
+  owner           User        @relation(fields: [ownerId], references: [id])
+  name            String
+  slug            String      @unique
+  description     String?
+  logoUrl         String?
+  bannerUrl       String?
+  commissionRate  Decimal     @default(0.05) @db.Decimal(5, 4)
+  isOpen          Boolean     @default(true)
+  barangay        String
+  contactNumber   String
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  products        Product[]
+  orders          Order[]
+  carts           Cart[]
+}
+
+model Product {
+  id          String      @id @default(uuid())
+  storeId     String
+  store       Store       @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  name        String
+  description String?
+  price       Decimal     @db.Decimal(10, 2)
+  stock       Int         @default(0)
+  imageUrl    String?
+  category    String
+  isAvailable Boolean     @default(true)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  orderItems  OrderItem[]
+  cartItems   CartItem[]
+
+  @@index([storeId, isAvailable])
+}
+
+model RiderProfile {
+  id            String      @id @default(uuid())
+  userId        String      @unique
+  user          User        @relation(fields: [userId], references: [id])
+  vehicleType   String      @default("MOTORCYCLE")
+  plateNumber   String
+  isAvailable   Boolean     @default(false)
+  currentCashOnHand Decimal @default(0.00) @db.Decimal(10, 2)
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  assignedOrders Order[]
+}
+
+model Cart {
+  id        String     @id @default(uuid())
+  userId    String     @unique
+  storeId   String?
+  store     Store?     @relation(fields: [storeId], references: [id])
+  items     CartItem[]
+  updatedAt DateTime   @updatedAt
+}
+
+model CartItem {
+  id        String   @id @default(uuid())
+  cartId    String
+  cart      Cart     @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product  @relation(fields: [productId], references: [id])
+  quantity  Int      @default(1)
+}
+
+model Order {
+  id                   String        @id @default(uuid())
+  orderNumber          String        @unique
+  customerId           String
+  customer             User          @relation("CustomerOrders", fields: [customerId], references: [id])
+  storeId              String
+  store                Store         @relation(fields: [storeId], references: [id])
+  riderId              String?
+  rider                RiderProfile? @relation(fields: [riderId], references: [id])
+  
+  status               OrderStatus   @default(PENDING)
+  
+  subtotalAmount       Decimal       @db.Decimal(10, 2)
+  deliveryFee          Decimal       @default(45.00) @db.Decimal(10, 2)
+  totalAmount          Decimal       @db.Decimal(10, 2)
+  
+  commissionAmount     Decimal       @db.Decimal(10, 2)
+  merchantPayoutAmount Decimal       @db.Decimal(10, 2)
+  riderPayoutAmount    Decimal       @default(35.00) @db.Decimal(10, 2)
+  platformMarginAmount Decimal       @default(10.00) @db.Decimal(10, 2)
+  
+  deliveryAddress      Json
+  podImageUrl          String?
+  cancellationReason   String?
+  
+  createdAt            DateTime      @default(now())
+  updatedAt            DateTime      @updatedAt
+
+  orderItems           OrderItem[]
+  statusHistory        OrderStatusHistory[]
+  ledgerEntries        LedgerEntry[]
+
+  @@index([status, storeId])
+  @@index([status, riderId])
+}
+
+model OrderItem {
+  id          String   @id @default(uuid())
+  orderId     String
+  order       Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId   String
+  product     Product  @relation(fields: [productId], references: [id])
+  unitPrice   Decimal  @db.Decimal(10, 2)
+  quantity    Int
+  lineTotal   Decimal  @db.Decimal(10, 2)
+}
+
+model OrderStatusHistory {
+  id          String      @id @default(uuid())
+  orderId     String
+  order       Order       @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  status      OrderStatus
+  changedById String
+  changedBy   User        @relation(fields: [changedById], references: [id])
+  notes       String?
+  createdAt   DateTime    @default(now())
+}
+
+model LedgerEntry {
+  id           String   @id @default(uuid())
+  orderId      String?
+  order        Order?   @relation(fields: [orderId], references: [id])
+  accountCode  String
+  description  String
+  debit        Decimal  @default(0.00) @db.Decimal(10, 2)
+  credit       Decimal  @default(0.00) @db.Decimal(10, 2)
+  createdAt    DateTime @default(now())
+
+  @@index([accountCode, createdAt])
+}
+
+model Expense {
+  id           String   @id @default(uuid())
+  category     String
+  amount       Decimal  @db.Decimal(10, 2)
+  description  String
+  receiptUrl   String?
+  loggedById   String
+  createdAt    DateTime @default(now())
+}
+
+model AuditLog {
+  id           String   @id @default(uuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id])
+  action       String
+  resourceType String
+  resourceId   String
+  details      Json?
+  ipAddress    String?
+  createdAt    DateTime @default(now())
+
+  @@index([userId, action])
+}
