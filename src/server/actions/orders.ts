@@ -1,228 +1,256 @@
 "use server";
 
+import prisma from "@/lib/prisma";
+import { getServerSession } from "@/lib/server-auth";
+import { canTransitionOrder, shouldRestoreStock } from "@/lib/order-state-machine";
+import { OrderStatus, Role } from "@/types";
 import { revalidatePath } from "next/cache";
-import { prisma } from "@/lib/prisma";
-import { getCurrentSession } from "@/lib/auth/session";
-import { canTransition } from "@/lib/state-machine";
-import { postOrderDeliveryJournal } from "@/lib/ledger";
-import { DeliveryAddressData, OrderStatus } from "@/types";
 
-export interface PlaceOrderInput {
-  storeId: string;
-  items: { productId: string; quantity: number }[];
-  deliveryAddress: DeliveryAddressData;
-}
+export async function updateOrderStatus({
+  orderId,
+  targetStatus,
+  note,
+  markCollected,
+}: {
+  orderId: string;
+  targetStatus: OrderStatus;
+  note?: string;
+  markCollected?: boolean;
+}) {
+  try {
+    const sessionData = await getServerSession();
+    if (!sessionData || !sessionData.user) {
+      return { success: false, error: "Unauthorized. Please sign in." };
+    }
 
-export async function placeOrderAction(input: PlaceOrderInput) {
-  const session = await getCurrentSession();
-  if (!session) {
-    throw new Error("You must be logged in to place an order.");
-  }
+    const userId = sessionData.user.id;
+    const userRole = ((sessionData.user as unknown as { role?: string }).role || "CUSTOMER") as Role;
 
-  const { storeId, items, deliveryAddress } = input;
+    // Fetch existing order
+    const order = await prisma.order.findUnique({
+      where: { id: orderId },
+      include: {
+        items: true,
+      },
+    });
 
-  if (!items || items.length === 0) {
-    throw new Error("Cannot place an order with an empty cart.");
-  }
+    if (!order) {
+      return { success: false, error: "Order not found." };
+    }
 
-  // Mandatory Landmark Validation for provincial Lingayen delivery (Section 6.1 & 20.1)
-  if (!deliveryAddress.landmark || deliveryAddress.landmark.trim().length < 5) {
-    throw new Error("A recognizable landmark is mandatory for Lingayen deliveries to assist local couriers.");
-  }
+    // Role-specific authorization checks
+    if (userRole === "CUSTOMER") {
+      if (order.customerId !== userId) {
+        return { success: false, error: "You do not have permission to view or edit this order." };
+      }
+    } else if (userRole === "RIDER") {
+      if (order.assignedRiderId !== userId) {
+        return { success: false, error: "You are not the assigned rider for this delivery." };
+      }
+    } else if (userRole !== "ADMIN") {
+      return { success: false, error: "Unauthorized role access." };
+    }
 
-  const store = await prisma.store.findUnique({
-    where: { id: storeId },
-    include: { products: true },
-  });
+    // State machine check
+    const transitionCheck = canTransitionOrder(order.status as OrderStatus, targetStatus, userRole);
+    if (!transitionCheck.allowed) {
+      return { success: false, error: transitionCheck.reason || "Invalid status transition." };
+    }
 
-  if (!store) throw new Error("Store not found.");
-  if (!store.isOpen) throw new Error("This store is currently closed and not accepting new orders.");
+    // Atomic transaction for order update and optional stock restoration
+    await prisma.$transaction(async (tx) => {
+      const now = new Date();
+      const updateData: Record<string, unknown> = {
+        status: targetStatus,
+        updatedAt: now,
+      };
 
-  // Execute in atomic transaction to prevent race conditions in inventory
-  return await prisma.$transaction(async (tx) => {
-    let subtotalAmount = 0;
-    const orderItemsData: { productId: string; unitPrice: number; quantity: number; lineTotal: number }[] = [];
+      if (targetStatus === "CONFIRMED") updateData.confirmedAt = now;
+      if (targetStatus === "PICKED_UP") updateData.pickedUpAt = now;
+      if (targetStatus === "ON_THE_WAY") updateData.onTheWayAt = now;
+      if (targetStatus === "DELIVERED") {
+        updateData.deliveredAt = now;
+        // Optionally mark COD collected upon delivery if rider/admin flags it
+        if (markCollected) {
+          updateData.paymentCollectionStatus = "COLLECTED";
+          updateData.collectedAt = now;
+        }
+      }
+      if (targetStatus === "CANCELLED") {
+        updateData.cancelledAt = now;
+        updateData.cancellationReason = note || "Cancelled by user or administrator";
+      }
 
-    for (const item of items) {
-      const product = await tx.product.findUnique({
-        where: { id: item.productId },
+      // Check if stock needs restoration
+      if (shouldRestoreStock(order.status as OrderStatus, targetStatus)) {
+        for (const item of order.items) {
+          if (item.productId) {
+            await tx.product.update({
+              where: { id: item.productId },
+              data: {
+                stock: { increment: item.quantity },
+              },
+            });
+
+            await tx.inventoryLog.create({
+              data: {
+                productId: item.productId,
+                change: item.quantity,
+                reason: "ORDER_CANCELLED",
+                orderId: order.id,
+                createdById: userId,
+              },
+            });
+          }
+        }
+      }
+
+      await tx.order.update({
+        where: { id: order.id },
+        data: updateData,
       });
 
-      if (!product || product.storeId !== storeId) {
-        throw new Error(`Product ${item.productId} does not belong to this store.`);
-      }
-
-      if (!product.isAvailable || product.stock < item.quantity) {
-        throw new Error(`Item "${product.name}" is out of stock or does not have enough inventory.`);
-      }
-
-      // Atomic inventory deduction
-      await tx.product.update({
-        where: { id: product.id },
+      await tx.orderStatusHistory.create({
         data: {
-          stock: { decrement: item.quantity },
-          isAvailable: product.stock - item.quantity > 0,
+          orderId: order.id,
+          fromStatus: order.status,
+          toStatus: targetStatus,
+          note: note || `Status updated to ${targetStatus} by ${userRole}.`,
+          changedById: userId,
         },
       });
-
-      const lineTotal = product.price * item.quantity;
-      subtotalAmount += lineTotal;
-
-      orderItemsData.push({
-        productId: product.id,
-        unitPrice: product.price,
-        quantity: item.quantity,
-        lineTotal,
-      });
-    }
-
-    const deliveryFee = 45.0; // Standard Lingayen flat delivery fee
-    const totalAmount = subtotalAmount + deliveryFee;
-
-    // Platform Financial Distribution Model (Master Plan Section 11.1)
-    const commissionRate = store.commissionRate || 0.05;
-    const commissionAmount = Number((subtotalAmount * commissionRate).toFixed(2));
-    const merchantPayoutAmount = Number((subtotalAmount - commissionAmount).toFixed(2));
-    const riderPayoutAmount = 35.0;
-    const platformMarginAmount = 10.0; // 45.00 - 35.00
-
-    // Generate readable deterministic order number: MOV-YYMMDD-XXX
-    const today = new Date();
-    const dateStr = today.toISOString().slice(2, 10).replace(/-/g, "");
-    const randomSuffix = Math.floor(100 + Math.random() * 900);
-    const orderNumber = `MOV-${dateStr}-${randomSuffix}`;
-
-    const newOrder = await tx.order.create({
-      data: {
-        orderNumber,
-        customerId: session.id,
-        storeId,
-        status: "PENDING",
-        subtotalAmount,
-        deliveryFee,
-        totalAmount,
-        commissionAmount,
-        merchantPayoutAmount,
-        riderPayoutAmount,
-        platformMarginAmount,
-        deliveryAddressJson: JSON.stringify(deliveryAddress),
-        orderItems: {
-          create: orderItemsData,
-        },
-        statusHistory: {
-          create: {
-            status: "PENDING",
-            changedById: session.id,
-            notes: "Order submitted via Cash-on-Delivery (COD)",
-          },
-        },
-      },
     });
 
-    // Write audit log
-    await tx.auditLog.create({
-      data: {
-        userId: session.id,
-        action: "PLACE_ORDER",
-        resourceType: "ORDER",
-        resourceId: newOrder.id,
-        detailsJson: JSON.stringify({ orderNumber, totalAmount, storeId }),
-      },
-    });
+    revalidatePath(`/orders/${orderId}`);
+    revalidatePath("/orders");
+    revalidatePath("/admin/orders");
+    revalidatePath(`/rider/deliveries/${orderId}`);
+    revalidatePath("/rider/deliveries");
+    revalidatePath("/rider");
 
-    return newOrder;
-  });
+    return { success: true };
+  } catch (error: unknown) {
+    console.error("Order status update error:", error);
+    return {
+      success: false,
+      error: (error as Error)?.message || "Failed to update order status.",
+    };
+  }
 }
 
-export async function updateOrderStatusAction(
-  orderId: string,
-  newStatus: OrderStatus,
-  notes?: string,
-  podImageUrl?: string
-) {
-  const session = await getCurrentSession();
-  if (!session) throw new Error("Unauthorized.");
-
-  const order = await prisma.order.findUnique({
-    where: { id: orderId },
-    include: {
-      store: true,
-      rider: { include: { user: true } },
-      customer: true,
-      orderItems: { include: { product: true } },
-    },
-  });
-
-  if (!order) throw new Error("Order not found.");
-
-  const check = canTransition(order.status as OrderStatus, newStatus, session.role);
-  if (!check.allowed) {
-    throw new Error(check.reason || "Invalid status transition.");
-  }
-
-  // POD enforcement when delivering
-  if (newStatus === "DELIVERED" && !podImageUrl && !order.podImageUrl) {
-    throw new Error("Proof of Delivery (POD) photo is mandatory to complete delivery handover.");
-  }
-
-  await prisma.$transaction(async (tx) => {
-    // If order was cancelled or rejected, restore stock
-    if (newStatus === "CANCELLED_BY_CUSTOMER" || newStatus === "REJECTED_BY_STORE") {
-      for (const item of order.orderItems) {
-        await tx.product.update({
-          where: { id: item.productId },
-          data: {
-            stock: { increment: item.quantity },
-            isAvailable: true,
-          },
-        });
-      }
+export async function assignRiderToOrder(orderId: string, riderId: string) {
+  try {
+    const sessionData = await getServerSession();
+    if (!sessionData || !sessionData.user) {
+      return { success: false, error: "Unauthorized." };
     }
 
-    // Update order status
-    await tx.order.update({
+    const userRole = (sessionData.user as unknown as { role?: string }).role;
+    if (userRole !== "ADMIN") {
+      return { success: false, error: "Only administrators can assign riders." };
+    }
+
+    // Verify rider exists and has RIDER role
+    const rider = await prisma.user.findUnique({
+      where: { id: riderId },
+    });
+
+    if (!rider || rider.role !== "RIDER" || rider.status !== "ACTIVE") {
+      return { success: false, error: "Selected user is not an active rider." };
+    }
+
+    const order = await prisma.order.findUnique({
+      where: { id: orderId },
+    });
+
+    if (!order) {
+      return { success: false, error: "Order not found." };
+    }
+
+    if (order.status === "DELIVERED" || order.status === "CANCELLED") {
+      return { success: false, error: "Cannot assign rider to completed or cancelled orders." };
+    }
+
+    await prisma.$transaction(async (tx) => {
+      await tx.order.update({
+        where: { id: orderId },
+        data: {
+          assignedRiderId: riderId,
+          status: "ASSIGNED",
+          assignedAt: new Date(),
+        },
+      });
+
+      await tx.orderStatusHistory.create({
+        data: {
+          orderId,
+          fromStatus: order.status,
+          toStatus: "ASSIGNED",
+          note: `Assigned to rider ${rider.name} (${rider.phone || "No phone"}).`,
+          changedById: sessionData.user.id,
+        },
+      });
+    });
+
+    revalidatePath(`/orders/${orderId}`);
+    revalidatePath("/admin/orders");
+    revalidatePath("/rider/deliveries");
+    revalidatePath("/rider");
+
+    return { success: true };
+  } catch (error: unknown) {
+    console.error("Rider assignment error:", error);
+    return {
+      success: false,
+      error: (error as Error)?.message || "Failed to assign rider.",
+    };
+  }
+}
+
+export async function recordCodPayment(orderId: string, isCollected = true) {
+  try {
+    const sessionData = await getServerSession();
+    if (!sessionData || !sessionData.user) {
+      return { success: false, error: "Unauthorized." };
+    }
+
+    const userRole = (sessionData.user as unknown as { role?: string }).role;
+    const userId = sessionData.user.id;
+
+    const order = await prisma.order.findUnique({
+      where: { id: orderId },
+    });
+
+    if (!order) {
+      return { success: false, error: "Order not found." };
+    }
+
+    if (userRole === "RIDER" && order.assignedRiderId !== userId) {
+      return { success: false, error: "You can only update COD for your assigned delivery." };
+    }
+
+    if (userRole !== "ADMIN" && userRole !== "RIDER") {
+      return { success: false, error: "Unauthorized to record COD collection." };
+    }
+
+    await prisma.order.update({
       where: { id: orderId },
       data: {
-        status: newStatus,
-        podImageUrl: podImageUrl || order.podImageUrl,
-        cancellationReason:
-          newStatus === "CANCELLED_BY_CUSTOMER" || newStatus === "REJECTED_BY_STORE"
-            ? notes
-            : order.cancellationReason,
+        paymentCollectionStatus: isCollected ? "COLLECTED" : "UNCOLLECTED",
+        collectedAt: isCollected ? new Date() : null,
       },
     });
 
-    // Add status history record
-    await tx.orderStatusHistory.create({
-      data: {
-        orderId,
-        status: newStatus,
-        changedById: session.id,
-        notes: notes || `Order transitioned to ${newStatus}`,
-      },
-    });
-  });
+    revalidatePath(`/orders/${orderId}`);
+    revalidatePath("/admin/orders");
+    revalidatePath(`/rider/deliveries/${orderId}`);
 
-  // If transitioned to DELIVERED, automatically post balanced double-entry ledger entries!
-  if (newStatus === "DELIVERED") {
-    await postOrderDeliveryJournal({
-      orderId: order.id,
-      orderNumber: order.orderNumber,
-      totalCOD: order.totalAmount,
-      merchantPayout: order.merchantPayoutAmount,
-      riderPayout: order.riderPayoutAmount,
-      commission: order.commissionAmount,
-      deliveryMargin: order.platformMarginAmount,
-      merchantName: order.store.name,
-      riderName: order.rider?.user.fullName || "Courier",
-    });
+    return { success: true };
+  } catch (error: unknown) {
+    console.error("COD payment record error:", error);
+    return {
+      success: false,
+      error: (error as Error)?.message || "Failed to record payment collection.",
+    };
   }
-
-  revalidatePath("/");
-  revalidatePath("/seller");
-  revalidatePath("/rider");
-  revalidatePath("/admin");
-  revalidatePath(`/orders/${orderId}`);
-
-  return { success: true, newStatus };
 }

@@ -2,270 +2,340 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { MovliLogo } from "./MovliLogo";
 import { useCart } from "@/context/CartContext";
-import { LINGAYEN_BARANGAYS } from "@/lib/utils";
+import { useSession, signOut } from "@/lib/auth-client";
 import {
-  MapPin,
   ShoppingBag,
   Search,
-  ChevronDown,
-  Clock,
-  Sparkles,
+  User,
+  PackageCheck,
+  ShieldAlert,
+  Bike,
+  LogOut,
   Menu,
   X,
-  Store,
-  Truck,
-  ShieldCheck,
+  ChevronDown,
 } from "lucide-react";
 
-export function Navbar({ session }: { session: any }) {
-  const { totalQuantity, setIsDrawerOpen, selectedBarangay, setSelectedBarangay } = useCart();
-  const [isBarangayModalOpen, setIsBarangayModalOpen] = useState(false);
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+export function Navbar() {
+  const router = useRouter();
+  const { itemCount } = useCart();
+  const { data: session, isPending } = useSession();
+  const [searchQuery, setSearchQuery] = useState("");
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
 
-  const currentBarangayInfo = LINGAYEN_BARANGAYS.find((b) => b.name === selectedBarangay) || LINGAYEN_BARANGAYS[0];
+  const user = session?.user;
+  const userRole = (user as unknown as { role?: string })?.role || "CUSTOMER";
+
+  const handleSearchSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (searchQuery.trim()) {
+      router.push(`/products?q=${encodeURIComponent(searchQuery.trim())}`);
+      setMobileMenuOpen(false);
+    }
+  };
+
+  const handleSignOut = async () => {
+    await signOut();
+    setUserMenuOpen(false);
+    router.push("/");
+    router.refresh();
+  };
 
   return (
-    <>
-      <header className="sticky top-7 z-40 bg-white/95 backdrop-blur-md border-b border-zinc-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16 gap-4">
-            {/* Logo */}
-            <div className="flex items-center gap-6">
-              <Link href="/" className="flex items-center gap-2 group">
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-movli-700 via-movli to-movli-400 flex items-center justify-center text-white shadow-md shadow-movli/30 group-hover:scale-105 transition">
-                  {/* Abstract dynamic forward-leaning "M" icon */}
-                  <svg
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2.5"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    className="w-5 h-5"
-                  >
-                    <path d="M3 17V7l5 6 4-6 5 6 4-6v10" />
-                  </svg>
-                </div>
-                <div className="flex flex-col">
-                  <span className="font-extrabold text-xl tracking-tight text-slate-deep leading-none font-outfit">
-                    Movli<span className="text-movli">.</span>
-                  </span>
-                  <span className="text-[10px] font-semibold text-zinc-400 tracking-wider uppercase">
-                    Lingayen Hub
-                  </span>
-                </div>
-              </Link>
+    <header className="sticky top-0 z-40 w-full bg-white border-b border-neutral-200/80 shadow-xs">
+      {/* Top Banner */}
+      <div className="bg-gradient-to-r from-orange-600 via-orange-500 to-amber-500 text-white text-xs font-medium py-1.5 px-4">
+        <div className="max-w-7xl mx-auto flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="inline-block w-2 h-2 rounded-full bg-amber-200 animate-pulse" />
+            <span>Local Market Dispatch • Guaranteed Fresh • Cash on Delivery (COD)</span>
+          </div>
+          <div className="hidden sm:flex items-center gap-4 text-orange-100 text-[11px]">
+            <span>Fast Rider Dispatch</span>
+            <span>•</span>
+            <span>Provincial Town Hubs</span>
+          </div>
+        </div>
+      </div>
 
-              {/* Barangay Location Pill (Desktop) */}
-              <button
-                onClick={() => setIsBarangayModalOpen(true)}
-                className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-full bg-sand-canvas border border-zinc-200 text-xs text-slate-deep hover:border-movli/50 hover:bg-movli-50/30 transition group"
-              >
-                <MapPin className="w-3.5 h-3.5 text-movli flex-shrink-0 group-hover:animate-bounce" />
-                <span className="text-zinc-500">Delivering to:</span>
-                <span className="font-bold text-slate-deep underline decoration-movli/40 decoration-2 underline-offset-2">
-                  Brgy. {selectedBarangay}
-                </span>
-                <span className="text-[10px] text-zinc-400 flex items-center gap-1 font-mono">
-                  <Clock className="w-2.5 h-2.5" />
-                  ~{currentBarangayInfo.deliveryEstimateMinutes}m
-                </span>
-                <ChevronDown className="w-3 h-3 text-zinc-400" />
-              </button>
-            </div>
-
-            {/* Navigation links (Desktop) */}
-            <nav className="hidden lg:flex items-center gap-6 text-xs font-semibold text-zinc-600">
-              <Link href="/" className="hover:text-movli transition">
-                Explore Marketplace
-              </Link>
-              <Link href="/#stores" className="hover:text-movli transition">
-                Verified Stores
-              </Link>
-              <Link href="/orders" className="hover:text-movli transition">
-                Track Orders
-              </Link>
-              {session?.role === "SELLER" && (
-                <Link href="/seller" className="text-amber-600 hover:text-amber-700 transition flex items-center gap-1">
-                  <Store className="w-3.5 h-3.5" />
-                  Store Hub
-                </Link>
-              )}
-              {session?.role === "RIDER" && (
-                <Link href="/rider" className="text-emerald-600 hover:text-emerald-700 transition flex items-center gap-1">
-                  <Truck className="w-3.5 h-3.5" />
-                  Rider Terminal
-                </Link>
-              )}
-              {(session?.role === "ADMIN" || session?.role === "SUPER_ADMIN") && (
-                <Link href="/admin" className="text-blue-600 hover:text-blue-700 transition flex items-center gap-1">
-                  <ShieldCheck className="w-3.5 h-3.5" />
-                  Admin Console
-                </Link>
-              )}
-            </nav>
-
-            {/* Right: Cart Button & Mobile Menu Toggle */}
-            <div className="flex items-center gap-3">
-              <button
-                onClick={() => setIsDrawerOpen(true)}
-                className="relative px-4 py-2 rounded-xl bg-movli text-white font-bold text-xs flex items-center gap-2 hover:bg-movli-600 transition shadow-md shadow-movli/20 active:scale-95"
-              >
-                <ShoppingBag className="w-4 h-4" />
-                <span className="hidden sm:inline">Basket</span>
-                {totalQuantity > 0 && (
-                  <span className="bg-white text-movli text-[10px] font-black px-1.5 py-0.2 rounded-full shadow-inner">
-                    {totalQuantity}
-                  </span>
-                )}
-              </button>
-
-              <button
-                onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-                className="lg:hidden p-2 rounded-xl border border-zinc-200 text-zinc-600 hover:bg-zinc-100 transition"
-              >
-                {isMobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-              </button>
-            </div>
+      {/* Main Header Bar */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex items-center justify-between h-16 sm:h-20 gap-4 sm:gap-8">
+          {/* Logo */}
+          <div className="flex-shrink-0">
+            <MovliLogo showTagline size="md" />
           </div>
 
-          {/* Mobile Location Bar */}
-          <div className="md:hidden pb-2.5 pt-0.5">
-            <button
-              onClick={() => setIsBarangayModalOpen(true)}
-              className="w-full flex items-center justify-between px-3 py-1.5 rounded-lg bg-sand-canvas border border-zinc-200 text-xs text-slate-deep"
+          {/* Search Bar (Shopee-Style prominent center search) */}
+          <form
+            onSubmit={handleSearchSubmit}
+            className="hidden md:flex flex-1 max-w-xl relative items-center"
+          >
+            <div className="relative w-full">
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search fresh fish, local delicacies, pantry essentials..."
+                className="w-full bg-neutral-100 text-neutral-900 placeholder-neutral-500 text-sm rounded-full pl-4 pr-12 py-2.5 border border-transparent focus:border-orange-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-orange-500/20 transition-all"
+              />
+              <button
+                type="submit"
+                aria-label="Search products"
+                className="absolute right-1.5 top-1/2 -translate-y-1/2 p-1.5 rounded-full bg-orange-600 hover:bg-orange-700 text-white transition-colors"
+              >
+                <Search className="w-4 h-4" />
+              </button>
+            </div>
+          </form>
+
+          {/* Right Navigation & Actions */}
+          <div className="flex items-center gap-2 sm:gap-4">
+            {/* Products Browse Link */}
+            <Link
+              href="/products"
+              className="hidden lg:inline-flex text-sm font-semibold text-neutral-700 hover:text-orange-600 transition-colors px-2 py-1"
             >
-              <div className="flex items-center gap-1.5">
-                <MapPin className="w-3.5 h-3.5 text-movli" />
-                <span className="text-zinc-500">Delivering to:</span>
-                <span className="font-bold">Brgy. {selectedBarangay}</span>
+              All Products
+            </Link>
+
+            {/* Portal links based on role */}
+            {userRole === "ADMIN" && (
+              <Link
+                href="/admin"
+                className="hidden sm:inline-flex items-center gap-1.5 text-xs font-bold text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200 px-3 py-1.5 rounded-full transition-colors"
+              >
+                <ShieldAlert className="w-3.5 h-3.5" />
+                <span>Admin Hub</span>
+              </Link>
+            )}
+
+            {userRole === "RIDER" && (
+              <Link
+                href="/rider"
+                className="hidden sm:inline-flex items-center gap-1.5 text-xs font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 px-3 py-1.5 rounded-full transition-colors"
+              >
+                <Bike className="w-3.5 h-3.5" />
+                <span>Rider Terminal</span>
+              </Link>
+            )}
+
+            {/* Cart Icon */}
+            <Link
+              href="/cart"
+              className="relative p-2.5 rounded-xl text-neutral-700 hover:text-orange-600 hover:bg-orange-50 transition-all flex items-center justify-center"
+              aria-label="Shopping Cart"
+            >
+              <ShoppingBag className="w-6 h-6" />
+              {itemCount > 0 && (
+                <span className="absolute -top-1 -right-1 bg-orange-600 text-white text-[11px] font-black w-5 h-5 rounded-full flex items-center justify-center border-2 border-white shadow-xs">
+                  {itemCount > 99 ? "99+" : itemCount}
+                </span>
+              )}
+            </Link>
+
+            {/* User Account / Auth Dropdown */}
+            {!isPending && (
+              <div className="relative">
+                {user ? (
+                  <div>
+                    <button
+                      onClick={() => setUserMenuOpen(!userMenuOpen)}
+                      className="flex items-center gap-2 p-1.5 sm:px-3 sm:py-2 rounded-xl text-neutral-700 hover:bg-neutral-100 transition-colors"
+                    >
+                      <div className="w-8 h-8 rounded-full bg-orange-100 border border-orange-200 text-orange-700 font-bold flex items-center justify-center text-xs">
+                        {user.name?.charAt(0).toUpperCase() || "U"}
+                      </div>
+                      <div className="hidden sm:flex flex-col text-left">
+                        <span className="text-xs font-bold text-neutral-900 leading-tight">
+                          {user.name?.split(" ")[0]}
+                        </span>
+                        <span className="text-[10px] text-neutral-500 font-medium capitalize">
+                          {userRole.toLowerCase()}
+                        </span>
+                      </div>
+                      <ChevronDown className="w-3.5 h-3.5 text-neutral-400 hidden sm:block" />
+                    </button>
+
+                    {/* Dropdown Menu */}
+                    {userMenuOpen && (
+                      <div className="absolute right-0 mt-2 w-56 bg-white rounded-2xl shadow-xl border border-neutral-100 py-2 z-50 animate-in fade-in slide-in-from-top-2 duration-150">
+                        <div className="px-4 py-2 border-b border-neutral-100">
+                          <p className="text-xs font-bold text-neutral-900">{user.name}</p>
+                          <p className="text-[11px] text-neutral-500 truncate">{user.email}</p>
+                          <span className="inline-block mt-1 text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-orange-100 text-orange-700">
+                            {userRole}
+                          </span>
+                        </div>
+
+                        <div className="py-1">
+                          <Link
+                            href="/orders"
+                            onClick={() => setUserMenuOpen(false)}
+                            className="flex items-center gap-2.5 px-4 py-2 text-xs font-medium text-neutral-700 hover:bg-orange-50 hover:text-orange-700 transition-colors"
+                          >
+                            <PackageCheck className="w-4 h-4 text-neutral-500" />
+                            My Orders
+                          </Link>
+                          <Link
+                            href="/profile"
+                            onClick={() => setUserMenuOpen(false)}
+                            className="flex items-center gap-2.5 px-4 py-2 text-xs font-medium text-neutral-700 hover:bg-orange-50 hover:text-orange-700 transition-colors"
+                          >
+                            <User className="w-4 h-4 text-neutral-500" />
+                            Profile & Addresses
+                          </Link>
+
+                          {userRole === "ADMIN" && (
+                            <Link
+                              href="/admin"
+                              onClick={() => setUserMenuOpen(false)}
+                              className="flex items-center gap-2.5 px-4 py-2 text-xs font-medium text-amber-800 hover:bg-amber-50 transition-colors"
+                            >
+                              <ShieldAlert className="w-4 h-4 text-amber-600" />
+                              Admin Portal
+                            </Link>
+                          )}
+
+                          {userRole === "RIDER" && (
+                            <Link
+                              href="/rider"
+                              onClick={() => setUserMenuOpen(false)}
+                              className="flex items-center gap-2.5 px-4 py-2 text-xs font-medium text-blue-800 hover:bg-blue-50 transition-colors"
+                            >
+                              <Bike className="w-4 h-4 text-blue-600" />
+                              Rider Terminal
+                            </Link>
+                          )}
+                        </div>
+
+                        <div className="pt-1 border-t border-neutral-100">
+                          <button
+                            onClick={handleSignOut}
+                            className="w-full flex items-center gap-2.5 px-4 py-2 text-xs font-medium text-red-600 hover:bg-red-50 transition-colors"
+                          >
+                            <LogOut className="w-4 h-4" />
+                            Sign Out
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <Link
+                      href="/login"
+                      className="text-xs sm:text-sm font-semibold text-neutral-700 hover:text-orange-600 px-3 py-2 rounded-xl transition-colors"
+                    >
+                      Sign In
+                    </Link>
+                    <Link
+                      href="/register"
+                      className="text-xs sm:text-sm font-bold bg-orange-600 hover:bg-orange-700 text-white px-3 sm:px-4 py-2 rounded-xl shadow-xs shadow-orange-600/30 transition-all hover:scale-102"
+                    >
+                      Register
+                    </Link>
+                  </div>
+                )}
               </div>
-              <div className="flex items-center gap-1 text-[11px] text-zinc-400">
-                <span>~{currentBarangayInfo.deliveryEstimateMinutes} mins</span>
-                <ChevronDown className="w-3 h-3" />
-              </div>
+            )}
+
+            {/* Mobile Menu Toggle Button */}
+            <button
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              className="md:hidden p-2 rounded-xl text-neutral-700 hover:bg-neutral-100"
+              aria-label="Toggle Navigation"
+            >
+              {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
             </button>
           </div>
         </div>
 
-        {/* Mobile Flyout Menu */}
-        {isMobileMenuOpen && (
-          <div className="lg:hidden border-t border-zinc-200 bg-white p-4 space-y-3">
-            <div className="grid grid-cols-2 gap-2 text-xs font-semibold">
-              <Link
-                href="/"
-                onClick={() => setIsMobileMenuOpen(false)}
-                className="p-3 rounded-xl bg-zinc-50 hover:bg-zinc-100 text-slate-deep"
-              >
-                🛍️ Marketplace
-              </Link>
+        {/* Mobile Search Input */}
+        <div className="md:hidden pb-3">
+          <form onSubmit={handleSearchSubmit} className="relative">
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search products, groceries, snacks..."
+              className="w-full bg-neutral-100 text-neutral-900 text-sm rounded-full pl-4 pr-10 py-2 border border-transparent focus:border-orange-500 focus:bg-white focus:outline-none"
+            />
+            <button
+              type="submit"
+              aria-label="Search"
+              className="absolute right-1.5 top-1/2 -translate-y-1/2 p-1.5 rounded-full text-neutral-500"
+            >
+              <Search className="w-4 h-4" />
+            </button>
+          </form>
+        </div>
+      </div>
+
+      {/* Mobile Drawer Menu */}
+      {mobileMenuOpen && (
+        <div className="md:hidden bg-white border-b border-neutral-200 px-4 pt-2 pb-6 space-y-3">
+          <Link
+            href="/products"
+            onClick={() => setMobileMenuOpen(false)}
+            className="block px-3 py-2 rounded-lg text-sm font-semibold text-neutral-800 hover:bg-neutral-50"
+          >
+            All Products
+          </Link>
+          <Link
+            href="/cart"
+            onClick={() => setMobileMenuOpen(false)}
+            className="flex items-center justify-between px-3 py-2 rounded-lg text-sm font-semibold text-neutral-800 hover:bg-neutral-50"
+          >
+            <span>Shopping Cart</span>
+            {itemCount > 0 && (
+              <span className="px-2 py-0.5 text-xs font-bold rounded-full bg-orange-600 text-white">
+                {itemCount}
+              </span>
+            )}
+          </Link>
+          {user && (
+            <>
               <Link
                 href="/orders"
-                onClick={() => setIsMobileMenuOpen(false)}
-                className="p-3 rounded-xl bg-zinc-50 hover:bg-zinc-100 text-slate-deep"
+                onClick={() => setMobileMenuOpen(false)}
+                className="block px-3 py-2 rounded-lg text-sm font-semibold text-neutral-800 hover:bg-neutral-50"
               >
-                📦 Track Orders
+                My Orders
               </Link>
               <Link
-                href="/seller"
-                onClick={() => setIsMobileMenuOpen(false)}
-                className="p-3 rounded-xl bg-amber-50 text-amber-800"
+                href="/profile"
+                onClick={() => setMobileMenuOpen(false)}
+                className="block px-3 py-2 rounded-lg text-sm font-semibold text-neutral-800 hover:bg-neutral-50"
               >
-                🏪 Seller Hub
+                Profile & Addresses
               </Link>
-              <Link
-                href="/rider"
-                onClick={() => setIsMobileMenuOpen(false)}
-                className="p-3 rounded-xl bg-emerald-50 text-emerald-800"
-              >
-                🛵 Rider Terminal
-              </Link>
-              <Link
-                href="/admin"
-                onClick={() => setIsMobileMenuOpen(false)}
-                className="p-3 rounded-xl bg-blue-50 text-blue-800 col-span-2"
-              >
-                📊 Admin & Financial Ledger
-              </Link>
-              <Link
-                href="/sys-core-portal-x9"
-                onClick={() => setIsMobileMenuOpen(false)}
-                className="p-3 rounded-xl bg-purple-50 text-purple-800 col-span-2 font-mono text-[11px]"
-              >
-                ⚡ Secret Super Admin Portal
-              </Link>
-            </div>
-          </div>
-        )}
-      </header>
-
-      {/* Lingayen Barangay Selector Modal */}
-      {isBarangayModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn">
-          <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-zinc-200 max-h-[85vh] flex flex-col">
-            <div className="flex items-center justify-between pb-4 border-b border-zinc-100">
-              <div className="flex items-center gap-2">
-                <div className="w-9 h-9 rounded-xl bg-movli-50 text-movli flex items-center justify-center">
-                  <MapPin className="w-5 h-5" />
-                </div>
-                <div>
-                  <h3 className="font-bold text-slate-deep text-base">Select Lingayen Delivery Barangay</h3>
-                  <p className="text-xs text-zinc-500">All 32 barangays supported with flat ₱45 delivery</p>
-                </div>
-              </div>
-              <button
-                onClick={() => setIsBarangayModalOpen(false)}
-                className="p-1.5 rounded-lg text-zinc-400 hover:text-slate-deep hover:bg-zinc-100"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="py-3">
-              <div className="text-xs text-zinc-500 mb-2">
-                Couriers use local barangay clusters and landmark hints for pin-point provincial dispatch.
-              </div>
-            </div>
-
-            <div className="flex-1 overflow-y-auto space-y-1.5 pr-1">
-              {LINGAYEN_BARANGAYS.map((b) => {
-                const isSelected = selectedBarangay === b.name;
-                return (
-                  <button
-                    key={b.name}
-                    onClick={() => {
-                      setSelectedBarangay(b.name);
-                      setIsBarangayModalOpen(false);
-                    }}
-                    className={`w-full text-left p-3 rounded-xl border text-xs transition flex items-center justify-between ${
-                      isSelected
-                        ? "border-movli bg-movli-50/50 text-movli-900 font-bold"
-                        : "border-zinc-200 hover:border-zinc-300 hover:bg-sand-canvas text-slate-deep"
-                    }`}
-                  >
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className="font-semibold text-sm">Brgy. {b.name}</span>
-                        <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-zinc-100 text-zinc-600 font-medium">
-                          {b.cluster}
-                        </span>
-                      </div>
-                      <div className="text-[11px] text-zinc-500 mt-0.5">
-                        Landmarks: {b.popularLandmarks.slice(0, 2).join(", ")}
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <span className="text-xs font-semibold text-emerald-600">~{b.deliveryEstimateMinutes} mins</span>
-                      <div className="text-[10px] text-zinc-400">Fixed ₱45 COD</div>
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
+            </>
+          )}
+          {userRole === "ADMIN" && (
+            <Link
+              href="/admin"
+              onClick={() => setMobileMenuOpen(false)}
+              className="block px-3 py-2 rounded-lg text-sm font-bold text-amber-700 bg-amber-50"
+            >
+              Admin Dashboard
+            </Link>
+          )}
+          {userRole === "RIDER" && (
+            <Link
+              href="/rider"
+              onClick={() => setMobileMenuOpen(false)}
+              className="block px-3 py-2 rounded-lg text-sm font-bold text-blue-700 bg-blue-50"
+            >
+              Rider Deliveries
+            </Link>
+          )}
         </div>
       )}
-    </>
+    </header>
   );
 }

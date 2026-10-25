@@ -1,111 +1,231 @@
 import React from "react";
 import { OrderStatus } from "@/types";
-import { CheckCircle2, Clock, Package, Bike, Home, AlertTriangle, XCircle } from "lucide-react";
+import { CheckCircle2, Clock, Bike, PackageCheck, AlertCircle, ShoppingBag, Truck } from "lucide-react";
 
-interface StepperProps {
+interface OrderStatusStepperProps {
   status: OrderStatus;
+  confirmedAt?: Date | null;
+  assignedAt?: Date | null;
+  pickedUpAt?: Date | null;
+  onTheWayAt?: Date | null;
+  deliveredAt?: Date | null;
+  cancelledAt?: Date | null;
+  cancellationReason?: string | null;
 }
 
-const STEPS = [
-  { key: "PENDING", label: "Order Placed", icon: Clock },
-  { key: "PREPARING", label: "Store Preparing", icon: Package },
-  { key: "READY_FOR_PICKUP", label: "Ready for Pickup", icon: CheckCircle2 },
-  { key: "IN_TRANSIT", label: "Courier In Transit", icon: Bike },
-  { key: "DELIVERED", label: "Delivered", icon: Home },
-];
-
-export function OrderStatusStepper({ status }: StepperProps) {
-  const isCancelled = status === "CANCELLED_BY_CUSTOMER" || status === "REJECTED_BY_STORE";
-  const isFailed = status === "FAILED_DELIVERY" || status === "RETURNED_TO_SELLER";
-
-  if (isCancelled) {
+export function OrderStatusStepper({
+  status,
+  confirmedAt,
+  assignedAt,
+  pickedUpAt,
+  onTheWayAt,
+  deliveredAt,
+  cancelledAt,
+  cancellationReason,
+}: OrderStatusStepperProps) {
+  if (status === "CANCELLED") {
     return (
-      <div className="p-4 rounded-xl bg-red-50 border border-red-200 text-red-800 flex items-center gap-3">
-        <XCircle className="w-5 h-5 text-red-600 flex-shrink-0" />
-        <div>
-          <div className="font-bold text-sm">
-            {status === "CANCELLED_BY_CUSTOMER" ? "Order Cancelled by Customer" : "Order Declined by Store"}
+      <div className="bg-red-50 border border-red-200 rounded-2xl p-4 sm:p-5 text-red-900">
+        <div className="flex items-center gap-3">
+          <AlertCircle className="w-6 h-6 text-red-600 shrink-0" />
+          <div>
+            <h4 className="text-sm font-bold">This Order Was Cancelled</h4>
+            <p className="text-xs text-red-700 mt-0.5">
+              {cancellationReason || "The order was cancelled and any reserved stock has been safely restored."}
+            </p>
+            {cancelledAt && (
+              <p className="text-[11px] text-red-500 mt-1">
+                Cancelled on {new Date(cancelledAt).toLocaleString("en-PH")}
+              </p>
+            )}
           </div>
-          <div className="text-xs text-red-600">Stock has been restored to merchant inventory.</div>
         </div>
       </div>
     );
   }
 
-  if (isFailed) {
-    return (
-      <div className="p-4 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 flex items-center gap-3">
-        <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0" />
-        <div>
-          <div className="font-bold text-sm">
-            {status === "FAILED_DELIVERY" ? "Delivery Handover Unsuccessful" : "Goods Returned to Merchant"}
-          </div>
-          <div className="text-xs text-amber-600">Customer was unreachable or refused COD.</div>
-        </div>
-      </div>
-    );
-  }
+  const steps = [
+    {
+      id: "PENDING",
+      label: "Order Placed",
+      icon: ShoppingBag,
+      timestamp: null,
+      desc: "Awaiting store confirmation",
+    },
+    {
+      id: "CONFIRMED",
+      label: "Confirmed",
+      icon: CheckCircle2,
+      timestamp: confirmedAt,
+      desc: "Store accepted your order",
+    },
+    {
+      id: "ASSIGNED",
+      label: "Rider Assigned",
+      icon: Bike,
+      timestamp: assignedAt,
+      desc: "Rider dispatched to store",
+    },
+    {
+      id: "PICKED_UP",
+      label: "Order Picked Up",
+      icon: Clock,
+      timestamp: pickedUpAt,
+      desc: "Rider received packages",
+    },
+    {
+      id: "ON_THE_WAY",
+      label: "On the Way",
+      icon: Truck,
+      timestamp: onTheWayAt,
+      desc: "Heading to your delivery address",
+    },
+    {
+      id: "DELIVERED",
+      label: "Delivered",
+      icon: PackageCheck,
+      timestamp: deliveredAt,
+      desc: "Completed and handed to you",
+    },
+  ];
 
-  const getStepIndex = (st: OrderStatus): number => {
-    switch (st) {
-      case "PENDING":
-        return 0;
-      case "ACCEPTED":
-      case "PREPARING":
-        return 1;
-      case "READY_FOR_PICKUP":
-      case "ASSIGNED":
-        return 2;
-      case "PICKED_UP":
-      case "IN_TRANSIT":
-        return 3;
-      case "DELIVERED":
-        return 4;
-      default:
-        return 0;
-    }
-  };
+  const statusOrder: OrderStatus[] = [
+    "PENDING",
+    "CONFIRMED",
+    "ASSIGNED",
+    "PICKED_UP",
+    "ON_THE_WAY",
+    "DELIVERED",
+  ];
 
-  const currentIndex = getStepIndex(status);
+  const currentIdx = statusOrder.indexOf(status);
 
   return (
-    <div className="w-full py-4">
-      <div className="flex items-center justify-between relative">
-        {/* Connecting progress bar line */}
-        <div className="absolute top-1/2 left-0 right-0 h-1 bg-zinc-200 -translate-y-1/2 z-0" />
-        <div
-          className="absolute top-1/2 left-0 h-1 bg-movli -translate-y-1/2 z-0 transition-all duration-500"
-          style={{ width: `${(currentIndex / (STEPS.length - 1)) * 100}%` }}
-        />
+    <div className="w-full bg-white rounded-2xl border border-neutral-200/80 p-5 shadow-xs">
+      <h3 className="text-sm font-bold text-neutral-900 mb-6 flex items-center gap-2">
+        <span>Delivery Lifecycle Tracker</span>
+        <span className="text-xs font-normal text-neutral-500">• Cash on Delivery</span>
+      </h3>
 
-        {STEPS.map((step, idx) => {
-          const isDone = idx < currentIndex;
-          const isCurrent = idx === currentIndex;
-          const Icon = step.icon;
+      <div className="relative">
+        {/* Horizontal Progress Bar for Desktop */}
+        <div className="hidden md:grid grid-cols-6 gap-2 relative">
+          {/* Connector Line behind steps */}
+          <div className="absolute top-5 left-[8%] right-[8%] h-0.5 bg-neutral-200 -z-0">
+            <div
+              className="h-full bg-orange-600 transition-all duration-500"
+              style={{
+                width: `${Math.max(0, (currentIdx / (steps.length - 1)) * 100)}%`,
+              }}
+            />
+          </div>
 
-          return (
-            <div key={step.key} className="flex flex-col items-center relative z-10">
-              <div
-                className={`w-9 h-9 rounded-full flex items-center justify-center transition-all duration-300 ${
-                  isDone
-                    ? "bg-movli text-white shadow-md shadow-movli/30"
-                    : isCurrent
-                    ? "bg-movli text-white ring-4 ring-movli/20 scale-110"
-                    : "bg-white border-2 border-zinc-300 text-zinc-400"
-                }`}
-              >
-                <Icon className="w-4 h-4" />
+          {steps.map((step, idx) => {
+            const isCompleted = idx <= currentIdx;
+            const isCurrent = idx === currentIdx;
+            const StepIcon = step.icon;
+
+            return (
+              <div key={step.id} className="flex flex-col items-center text-center relative z-10">
+                <div
+                  className={`w-10 h-10 rounded-full flex items-center justify-center border-2 transition-all duration-300 ${
+                    isCurrent
+                      ? "bg-orange-600 border-orange-600 text-white ring-4 ring-orange-100 shadow-md scale-110"
+                      : isCompleted
+                      ? "bg-orange-600 border-orange-600 text-white"
+                      : "bg-white border-neutral-300 text-neutral-400"
+                  }`}
+                >
+                  <StepIcon className="w-5 h-5" />
+                </div>
+
+                <span
+                  className={`mt-2 text-xs font-bold leading-tight ${
+                    isCurrent
+                      ? "text-orange-600"
+                      : isCompleted
+                      ? "text-neutral-900"
+                      : "text-neutral-400"
+                  }`}
+                >
+                  {step.label}
+                </span>
+
+                <span className="text-[10px] text-neutral-500 mt-0.5 line-clamp-1 max-w-[110px]">
+                  {step.desc}
+                </span>
+
+                {step.timestamp && (
+                  <span className="text-[9px] text-orange-600 font-medium mt-1">
+                    {new Date(step.timestamp).toLocaleTimeString([], {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </span>
+                )}
               </div>
-              <span
-                className={`text-[11px] mt-2 font-semibold text-center whitespace-nowrap ${
-                  isCurrent ? "text-movli font-bold" : isDone ? "text-slate-deep" : "text-zinc-400"
-                }`}
-              >
-                {step.label}
-              </span>
-            </div>
-          );
-        })}
+            );
+          })}
+        </div>
+
+        {/* Vertical Stepper for Mobile Phones */}
+        <div className="md:hidden space-y-4">
+          {steps.map((step, idx) => {
+            const isCompleted = idx <= currentIdx;
+            const isCurrent = idx === currentIdx;
+            const StepIcon = step.icon;
+
+            return (
+              <div key={step.id} className="flex items-start gap-3">
+                <div className="flex flex-col items-center">
+                  <div
+                    className={`w-8 h-8 rounded-full flex items-center justify-center border-2 shrink-0 ${
+                      isCurrent
+                        ? "bg-orange-600 border-orange-600 text-white ring-3 ring-orange-100"
+                        : isCompleted
+                        ? "bg-orange-600 border-orange-600 text-white"
+                        : "bg-white border-neutral-300 text-neutral-400"
+                    }`}
+                  >
+                    <StepIcon className="w-4 h-4" />
+                  </div>
+                  {idx < steps.length - 1 && (
+                    <div
+                      className={`w-0.5 h-6 mt-1 ${
+                        idx < currentIdx ? "bg-orange-600" : "bg-neutral-200"
+                      }`}
+                    />
+                  )}
+                </div>
+
+                <div className="pt-0.5">
+                  <div className="flex items-center gap-2">
+                    <span
+                      className={`text-xs font-bold ${
+                        isCurrent
+                          ? "text-orange-600"
+                          : isCompleted
+                          ? "text-neutral-900"
+                          : "text-neutral-400"
+                      }`}
+                    >
+                      {step.label}
+                    </span>
+                    {step.timestamp && (
+                      <span className="text-[10px] text-neutral-500">
+                        {new Date(step.timestamp).toLocaleTimeString([], {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-[11px] text-neutral-500">{step.desc}</p>
+                </div>
+              </div>
+            );
+          })}
+        </div>
       </div>
     </div>
   );

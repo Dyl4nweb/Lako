@@ -1,200 +1,121 @@
 "use client";
 
-import React, { createContext, useContext, useEffect, useState } from "react";
-import { CartItemModel } from "@/types";
-
-interface PendingSwitch {
-  newStore: { id: string; name: string; slug: string; barangay: string };
-  item: CartItemModel;
-}
+import React, { createContext, useContext, useEffect, useState, useMemo } from "react";
+import { CartItem } from "@/types";
 
 interface CartContextType {
-  items: CartItemModel[];
-  storeId: string | null;
-  storeName: string | null;
-  storeSlug: string | null;
-  storeBarangay: string | null;
-  subtotal: number;
-  deliveryFee: number;
-  total: number;
-  totalQuantity: number;
-  isDrawerOpen: boolean;
-  setIsDrawerOpen: (open: boolean) => void;
-  addItem: (
-    store: { id: string; name: string; slug: string; barangay: string },
-    item: CartItemModel
-  ) => void;
+  items: CartItem[];
+  addItem: (item: Omit<CartItem, "quantity">, quantity?: number) => void;
   removeItem: (productId: string) => void;
   updateQuantity: (productId: string, quantity: number) => void;
   clearCart: () => void;
-  pendingSwitch: PendingSwitch | null;
-  confirmStoreSwitch: () => void;
-  cancelStoreSwitch: () => void;
-  selectedBarangay: string;
-  setSelectedBarangay: (barangay: string) => void;
+  itemCount: number;
+  subtotal: number;
+  deliveryFee: number;
+  total: number;
+  isLoaded: boolean;
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
-const CART_STORAGE_KEY = "movli_cart_v1";
-const BARANGAY_STORAGE_KEY = "movli_barangay_v1";
+const CART_STORAGE_KEY = "movli_cart_items_v1";
+const DEFAULT_DELIVERY_FEE = 45.0;
 
 export function CartProvider({ children }: { children: React.ReactNode }) {
-  const [items, setItems] = useState<CartItemModel[]>([]);
-  const [storeId, setStoreId] = useState<string | null>(null);
-  const [storeName, setStoreName] = useState<string | null>(null);
-  const [storeSlug, setStoreSlug] = useState<string | null>(null);
-  const [storeBarangay, setStoreBarangay] = useState<string | null>(null);
-  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
-  const [pendingSwitch, setPendingSwitch] = useState<PendingSwitch | null>(null);
-  const [selectedBarangay, setSelectedBarangayState] = useState<string>("Poblacion");
-  const [isInitialized, setIsInitialized] = useState(false);
+  const [items, setItems] = useState<CartItem[]>([]);
+  const [isLoaded, setIsLoaded] = useState(false);
 
-  // Load from localStorage on mount
   useEffect(() => {
     try {
-      const savedCart = localStorage.getItem(CART_STORAGE_KEY);
-      if (savedCart) {
-        const parsed = JSON.parse(savedCart);
-        setItems(parsed.items || []);
-        setStoreId(parsed.storeId || null);
-        setStoreName(parsed.storeName || null);
-        setStoreSlug(parsed.storeSlug || null);
-        setStoreBarangay(parsed.storeBarangay || null);
-      }
-      const savedBarangay = localStorage.getItem(BARANGAY_STORAGE_KEY);
-      if (savedBarangay) {
-        setSelectedBarangayState(savedBarangay);
+      const stored = localStorage.getItem(CART_STORAGE_KEY);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed)) {
+          setItems(parsed);
+        }
       }
     } catch (e) {
-      console.error("Failed to load cart state:", e);
+      console.warn("Failed to load cart from storage:", e);
     } finally {
-      setIsInitialized(true);
+      setIsLoaded(true);
     }
   }, []);
 
-  // Save to localStorage
   useEffect(() => {
-    if (!isInitialized) return;
+    if (!isLoaded) return;
     try {
-      localStorage.setItem(
-        CART_STORAGE_KEY,
-        JSON.stringify({ storeId, storeName, storeSlug, storeBarangay, items })
-      );
+      localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(items));
     } catch (e) {
-      console.error("Failed to persist cart:", e);
+      console.warn("Failed to save cart to storage:", e);
     }
-  }, [items, storeId, storeName, storeSlug, storeBarangay, isInitialized]);
+  }, [items, isLoaded]);
 
-  const setSelectedBarangay = (b: string) => {
-    setSelectedBarangayState(b);
-    try {
-      localStorage.setItem(BARANGAY_STORAGE_KEY, b);
-    } catch (e) {}
-  };
-
-  const addItem = (
-    store: { id: string; name: string; slug: string; barangay: string },
-    item: CartItemModel
-  ) => {
-    // If cart has items from a DIFFERENT store, enforce Single-Seller Rule
-    if (storeId && storeId !== store.id && items.length > 0) {
-      setPendingSwitch({ newStore: store, item });
-      return;
-    }
-
-    setStoreId(store.id);
-    setStoreName(store.name);
-    setStoreSlug(store.slug);
-    setStoreBarangay(store.barangay);
-
+  const addItem = (product: Omit<CartItem, "quantity">, quantity = 1) => {
     setItems((prev) => {
-      const existing = prev.find((i) => i.productId === item.productId);
+      const existing = prev.find((item) => item.productId === product.productId);
+      const safeQty = Math.max(1, quantity);
+
       if (existing) {
-        return prev.map((i) =>
-          i.productId === item.productId
-            ? { ...i, quantity: i.quantity + item.quantity }
-            : i
+        const newQty = Math.min(existing.quantity + safeQty, product.stock);
+        return prev.map((item) =>
+          item.productId === product.productId ? { ...item, quantity: newQty } : item
         );
+      } else {
+        const initialQty = Math.min(safeQty, product.stock);
+        return [...prev, { ...product, quantity: initialQty }];
       }
-      return [...prev, item];
     });
-  };
-
-  const confirmStoreSwitch = () => {
-    if (!pendingSwitch) return;
-    const { newStore, item } = pendingSwitch;
-    setStoreId(newStore.id);
-    setStoreName(newStore.name);
-    setStoreSlug(newStore.slug);
-    setStoreBarangay(newStore.barangay);
-    setItems([item]);
-    setPendingSwitch(null);
-  };
-
-  const cancelStoreSwitch = () => {
-    setPendingSwitch(null);
   };
 
   const removeItem = (productId: string) => {
-    setItems((prev) => {
-      const next = prev.filter((i) => i.productId !== productId);
-      if (next.length === 0) {
-        setStoreId(null);
-        setStoreName(null);
-        setStoreSlug(null);
-        setStoreBarangay(null);
-      }
-      return next;
-    });
+    setItems((prev) => prev.filter((item) => item.productId !== productId));
   };
 
   const updateQuantity = (productId: string, quantity: number) => {
-    if (quantity <= 0) {
-      removeItem(productId);
-      return;
-    }
-    setItems((prev) =>
-      prev.map((i) => (i.productId === productId ? { ...i, quantity } : i))
-    );
+    setItems((prev) => {
+      if (quantity <= 0) {
+        return prev.filter((item) => item.productId !== productId);
+      }
+      return prev.map((item) => {
+        if (item.productId === productId) {
+          const clamped = Math.min(quantity, item.stock);
+          return { ...item, quantity: clamped };
+        }
+        return item;
+      });
+    });
   };
 
   const clearCart = () => {
     setItems([]);
-    setStoreId(null);
-    setStoreName(null);
-    setStoreSlug(null);
-    setStoreBarangay(null);
   };
 
-  const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
-  const deliveryFee = items.length > 0 ? 45.0 : 0.0;
+  const itemCount = useMemo(
+    () => items.reduce((acc, item) => acc + item.quantity, 0),
+    [items]
+  );
+
+  const subtotal = useMemo(
+    () => items.reduce((acc, item) => acc + item.price * item.quantity, 0),
+    [items]
+  );
+
+  const deliveryFee = items.length > 0 ? DEFAULT_DELIVERY_FEE : 0;
   const total = subtotal + deliveryFee;
-  const totalQuantity = items.reduce((sum, item) => sum + item.quantity, 0);
 
   return (
     <CartContext.Provider
       value={{
         items,
-        storeId,
-        storeName,
-        storeSlug,
-        storeBarangay,
-        subtotal,
-        deliveryFee,
-        total,
-        totalQuantity,
-        isDrawerOpen,
-        setIsDrawerOpen,
         addItem,
         removeItem,
         updateQuantity,
         clearCart,
-        pendingSwitch,
-        confirmStoreSwitch,
-        cancelStoreSwitch,
-        selectedBarangay,
-        setSelectedBarangay,
+        itemCount,
+        subtotal,
+        deliveryFee,
+        total,
+        isLoaded,
       }}
     >
       {children}
